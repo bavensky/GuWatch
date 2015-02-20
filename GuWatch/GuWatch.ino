@@ -1,16 +1,19 @@
 #include <MicroView.h>
 #include <Wire.h>
 #include "RTClib.h"
+#include "I2Cdev.h"
+#include "MPU6050.h"
 
-#define AXISX  A1
-#define AXISY  A2
-#define AXISZ  A3
+MPU6050 accelgyro(0x69);
+int16_t ax, ay, az;
+int16_t gx, gy, gz;
+
+#define OUTPUT_READABLE_ACCELGYRO
 
 //Instantiate objects from class definitions
 RTC_DS1307 RTC;
 
 /**************  Clock  ******************************/
-int xout = 0,  yout = 0,  zout = 0;
 int i=0;
 int clocksize = 24;
 
@@ -29,50 +32,41 @@ void setup () {
   Wire.begin();
   RTC.begin();
   Serial.begin(9600);
-  pinMode(AXISX,  INPUT);
-  pinMode(AXISY,  INPUT);
-  pinMode(AXISZ,  INPUT);
+
 //  RTC.adjust(DateTime(__DATE__, __TIME__));
   
   uView.begin();		// init and start MicroView
   
   uView.clear(PAGE);	// erase the display memory buffer
+  
+  accelgyro.initialize();
+  
+  
 }
  
-void loop() {
-  xout = analogRead(AXISX);
-  yout = analogRead(AXISY);
-  zout = analogRead(AXISZ);
-  //lander_game();
-  Serial.print(xout);
-  Serial.print("  ");
-  Serial.println(yout);
+void loop()  {
+  accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+//  Serial.print(ax);
+//  Serial.print("\t");
+//  Serial.print(ay);
+//  Serial.println("\t");
 
-  if(xout <= 230)  {
+  // Clock mode
+  if(ax <= -10000)  {
+    uView.clear(PAGE);
+    i = 1;
+  }   
+  while(i == 1)  {
+    display_clock();
+  } 
+  
+  // Game mode
+  if(ay > 5000)  {
     uView.clear(PAGE);
     i = 2;
   }
   while(i == 2)  {
-    lander_game();
-    yout = analogRead(AXISY);
-    if(yout >= 300)  {
-      uView.clear(PAGE);
-      i = 0;
-    }
-  }
-  
-  if(yout <= 230)  {
-    uView.clear(PAGE);
-    i = 1;
-  }
-  while(i == 1)  {
-    display_clock();
-    
-    yout = analogRead(AXISY);
-    if(yout >= 250)  {
-      uView.clear(PAGE);
-      i = 0;
-    }
+    lander_game(); 
   }
   
   uView.setCursor(0,  0);			
@@ -81,54 +75,35 @@ void loop() {
 
 }
 /***********************  Function Game  ************************************/
-void flame()  {
-  uView.line(y+1,20,y+1+r,20);
-}
-
-void restart()  {
-  uView.clear(PAGE);
-  y=5;
-  v=0;
-  uView.line(63,0,63,47);
-}
-
-void drawship(){
-  uView.pixel(y-2, 20);
-  uView.pixel(y-1, 19);
-  uView.pixel(y-1, 21);
-  uView.pixel(y, 19);
-  uView.pixel(y, 21);
-  uView.pixel(y+1, 19);
-  uView.pixel(y+1, 21);
-  uView.pixel(y+1, 18);
-  uView.pixel(y+1, 22);
-  uView.pixel(y+2, 17);
-  uView.pixel(y+2, 23);
-}
-
 void  lander_game()  {
-  uView.line(63,0,63,47);
-  xout = analogRead(AXISX);
-  if (xout >= 250) {
-    v=v+0.00005;    // gravity
+  uView.line(63,0,63,47);  // วาดเส้นพื้น
+  
+  accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+  if (ay <= 2500) {
+    v=v+0.00005;    // เร่งเครื่องขึ้น
   } 
   else {
-    v=v-0.0001;    // thrust if pressed	
+    v=v-0.0001;    // ลดระดับลง
     r=6;
   }
   
   uView.setColor(BLACK);
-  drawship();  // erase
-  flame();
-  y=y+v;
-  if(r>0){r=r-.04;}
+  drawship();  // วาดรูปจรวจ
+  flame();    // แสดงผล
+  y  =  y  +  v;
+  
+  if(r  >  0)  {
+    r=r-.04;
+  }
+  
   uView.setColor(WHITE);
   drawship();
   flame();
-  
   uView.display();
-  if (y>61)  {
-    if(v>0.02)  {  // near base and too fast
+  
+  
+  if(y  >  61)  {
+    if(v  >  0.02)  {  // near base and too fast
       uView.setCursor(0,0);
       uView.print("Crash :(");
       uView.display();
@@ -142,17 +117,46 @@ void  lander_game()  {
       delay(2000);
       restart();
     }
-  } 
-  if (y<0)  {  // too high
+  }
+  
+  if(  y  <  0)  {  // too high
     uView.setCursor(0,0);
     uView.print("Lost :(");
     uView.display();
     delay(2000);
     restart();
   }
-    
+  
+  if(ax > 10000)  {
+      uView.clear(PAGE);
+      i = 0;
+  }
 }
 
+void flame()  {
+  uView.line(y+1,20,y+1+r,20);
+}
+
+void restart()  {
+  uView.clear(PAGE);
+  y  =  5;
+  v  =  0;
+  uView.line(63,0,63,47); // วาดเส้นพื้น 
+}
+
+void drawship()  {
+  uView.pixel(y-2, 20);
+  uView.pixel(y-1, 19);
+  uView.pixel(y-1, 21);
+  uView.pixel(y, 19);
+  uView.pixel(y, 21);
+  uView.pixel(y+1, 19);
+  uView.pixel(y+1, 21);
+  uView.pixel(y+1, 18);
+  uView.pixel(y+1, 22);
+  uView.pixel(y+2, 17);
+  uView.pixel(y+2, 23);
+}
 
 /********************  Function Clock  ********************************/
 void display_clock()  {
@@ -203,4 +207,10 @@ void display_clock()  {
   	
   drawnFirst  =  false;
   uView.clear(PAGE);
+  
+  accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+  if(ax > 10000)  {
+      uView.clear(PAGE);
+      i = 0;
+  }
 }
