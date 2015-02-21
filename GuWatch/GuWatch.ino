@@ -24,7 +24,8 @@ int16_t gx, gy, gz;
 
 //Instantiate objects from class definitions
 RTC_DS1307 RTC;
-
+/**************  Variable  ***************************/
+int mode;
 /**************  Clock  ******************************/
 int i=0;
 int clocksize = 24;
@@ -61,11 +62,12 @@ void loop()  {
 //  Serial.print(ay);
 //  Serial.println("\t");
 
+// Mode 
   // Clock mode
-  if(ax <= -10000)  {
+  if(ax <= -15000)  {
     uView.clear(PAGE);
     i = 1;
-  }   
+  }    
   while(i == 1)  {
     display_clock();
   } 
@@ -73,14 +75,29 @@ void loop()  {
   // Game mode
   if(ay > 5000)  {
     uView.clear(PAGE);
+    uView.setFontType(1); 
+    uView.setCursor(0,  0);			
+    uView.print("Lander");	
+    uView.setCursor(0,  15);			
+    uView.print("  Game");
+    uView.setCursor(0, 30);			
+    uView.print("----->");
+    uView.display();
+    delay(2000);
+    uView.clear(PAGE);
     i = 2;
   }
   while(i == 2)  {
     lander_game(); 
   }
   
+  uView.setFontType(1); 
   uView.setCursor(0,  0);			
-  uView.print("Hello :)");	
+  uView.print("Hello ");	
+  uView.setCursor(0,  15);			
+  uView.print("  World");
+  uView.setCursor(0, 30);			
+  uView.print("(^^)/");
   uView.display();
 
 }

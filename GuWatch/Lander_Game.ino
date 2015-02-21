@@ -1,5 +1,6 @@
 /***********************  Function Game  ************************************/
 void lander_game()  {
+
   uView.line(63,0,63,47);  // วาดเส้นพื้น
   
   accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
