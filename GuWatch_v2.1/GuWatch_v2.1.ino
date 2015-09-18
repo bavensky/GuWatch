@@ -28,7 +28,7 @@ int state_left;
 int state_right;
 int state_push;
 
-#define DEBOUNCE 200
+#define DEBOUNCE 250
 
 /**************  Clock  ******************************/
 int count=0;
